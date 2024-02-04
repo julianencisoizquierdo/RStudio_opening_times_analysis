@@ -4,7 +4,7 @@
 The goal is to find out the opening times of the restaurants in Vancouver (per day) and show the duration for different days of the week.
 
 ## Instructions
-The main file used for the analysis is ´df_business_vancouver.rds´. This dataset contains information about 14,505 restaurants in Vancouver, such as the location, address, stars, review count, opening hours, and others.
+The main file used for the analysis is `df_business_vancouver.rds`. This dataset contains information about 14,505 restaurants in Vancouver, such as the location, address, stars, review count, opening hours, and others.
 
 ## Usage
 To run the analysis, open the ´vancouver_opening_times_analysis.Rmd´ notebook and execute each cell sequentially. Ensure that the required datasets are in the correct file paths.
