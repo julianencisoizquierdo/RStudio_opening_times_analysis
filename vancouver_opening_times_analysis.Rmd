@@ -1,0 +1,247 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+
+getwd()
+
+df_business <- readRDS("df_business_vancouver.rds")
+
+var_types <- sapply(df_business, class)
+print(var_types)
+
+```
+
+
+
+```{r}
+
+head(df_business)
+
+x <- df_business$hours_Monday
+x <- x[!is.na(x)]
+x <- x[1:10]
+x
+```
+
+
+```{r}
+
+h1 <- str_split(x, ":", n=2)
+h1 <- do.call(rbind, h1)[,1] %>% as.numeric()
+h1
+
+m1 <- str_split(x, "[:\\-]", n=4)
+m1 <- do.call(rbind, m1)[,2] %>% as.numeric()
+m1
+
+h2 <- str_split(x, "[:\\-]", n=4)
+h2 <- do.call(rbind, h2)[,3] %>% as.numeric()
+h2
+
+m2 <- str_split(x, "[:\\-]", n=4)
+m2 <- do.call(rbind, m2)[,4] %>% as.numeric()
+
+duration <- data.frame(h1, m1, h2, m2)
+
+for (i in seq_len(nrow(duration))) {
+  duration$total_hours[i] <- duration$h2[i] - duration$h1[i]
+  if (duration$m2[i] >= duration$m1[i]) {
+    duration$total_minutes[i] <- duration$m2[i] - duration$m1[i]
+  } else {
+    duration$total_minutes[i] <- 60 + duration$m2[i] - duration$m1[i]
+  }
+  duration$final[i] <- duration$total_minutes[i] + (duration$total_hours[i] * 60)
+}
+
+duration <- duration$final
+duration
+```
+
+
+```{r}
+
+get_duration <- function(x) {
+  t <- vector("numeric", length(x))
+  for (i in seq_along(x)) {
+    h1 <- strsplit(x[i], split = "[-:]")[[1]][1]
+    h1 <- gsub(":", "", h1) %>% as.numeric()
+    m1 <- strsplit(x[i], split = "[-:]")[[1]][2]
+    m1 <- gsub(":", "", m1) %>% as.numeric()
+    h2 <- strsplit(x[i], split = "[-:]")[[1]][3]
+    h2 <- gsub(":", "", h2) %>% as.numeric()
+    m2 <- strsplit(x[i], split = "[-:]")[[1]][4]
+    m2 <- gsub(":", "", m2) %>% as.numeric()
+    
+    duration <- (h2 - h1) * 60 + (m2 - m1)
+    
+    t[i] <- duration
+  }
+  return(t)
+}
+```
+
+
+```{r}
+
+df_duration <- df_business %>%
+  mutate(
+    duration_mon = get_duration(hours_Monday),
+    duration_tue = get_duration(hours_Tuesday),
+    duration_wed = get_duration(hours_Wednesday),
+    duration_thu = get_duration(hours_Thursday),
+    duration_fri = get_duration(hours_Friday),
+    duration_sat = get_duration(hours_Saturday),
+    duration_sun = get_duration(hours_Sunday)
+)
+
+df_duration
+```
+
+
+```{r}
+
+df_duration <- df_duration %>%
+  select(business_id, duration_mon, duration_tue, duration_wed, duration_thu, duration_fri, duration_sat, duration_sun) %>%
+  pivot_longer(!business_id, names_to = "wday", values_to = "duration")
+
+df_duration
+```
+
+
+```{r}
+neg_c <- any(df_duration$duration < 0)
+print(neg_c)
+```
+
+
+```{r}
+
+df2 <- as.character(numeric(length(df_duration$duration)))
+
+for (i in seq_along(df_duration$duration)) {
+  if (!is.na(df_duration$duration[i]) && df_duration$duration[i] < 0) {
+    df2[i] <- df_duration$business_id[i]
+  } else {
+    next
+  }
+}
+
+df2
+```
+
+
+```{r}
+
+get_duration_2 <- function(x) {
+  t <- vector("numeric", length(x))
+  for (i in seq_along(x)) {
+    h1 <- strsplit(x[i], split = "[-:]")[[1]][1]
+    h1 <- gsub(":", "", h1) %>% as.numeric()
+    m1 <- strsplit(x[i], split = "[-:]")[[1]][2]
+    m1 <- gsub(":", "", m1) %>% as.numeric()
+    h2 <- strsplit(x[i], split = "[-:]")[[1]][3]
+    h2 <- gsub(":", "", h2) %>% as.numeric()
+    m2 <- strsplit(x[i], split = "[-:]")[[1]][4]
+    m2 <- gsub(":", "", m2) %>% as.numeric()
+    
+    h2 <- if_else(h2<h1,24+h2,h2)
+    
+    duration <- (h2 - h1) * 60 + (m2 - m1)
+    
+    t[i] <- duration
+  }
+  return(t)
+}
+```
+
+
+```{r}
+
+df_duration_2 <- df_business %>%
+  mutate(
+    duration_mon = get_duration_2(hours_Monday),
+    duration_tue = get_duration_2(hours_Tuesday),
+    duration_wed = get_duration_2(hours_Wednesday),
+    duration_thu = get_duration_2(hours_Thursday),
+    duration_fri = get_duration_2(hours_Friday),
+    duration_sat = get_duration_2(hours_Saturday),
+    duration_sun = get_duration_2(hours_Sunday)
+)
+
+
+df_duration_2 <- df_duration_2 %>%
+  select(business_id, duration_mon, duration_tue, duration_wed, duration_thu, duration_fri, duration_sat, duration_sun) %>%
+  pivot_longer(!business_id, names_to = "wday", values_to = "duration")
+
+```
+
+
+```{r}
+
+df_duration_2 <- df_duration_2 %>%
+  mutate(
+    wday = str_remove(wday, 'duration_'),
+    wday = factor(wday, ordered = TRUE),
+    duration = duration / 60
+)
+
+df_duration_2
+```
+
+
+```{r}
+
+df_duration_2 %>%
+  ggplot(aes(x = duration)) +
+  geom_hline(yintercept = 0.1, linetype = "dashed", color = "orange") +
+  geom_density() +
+  facet_wrap(~wday, ncol = 2) +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(0, 24, by = 2), expand = c(0, 0)) +
+  labs(
+    title = "Duration of time that restaurants are open",
+    subtitle = "A horizontal line at y=0.10 has been added to facilitate comparison",
+    x = "Duration (hr)",
+    y = "Density",
+    caption = str_c(
+      "More proportion of restaurants are closed on Mon than other days of the week",
+      "\n",
+      "Similar pattern on Tue, Wed, Thu, and Fri, with majority open for 8-10 hr",
+      "\n",
+      "Sat is similar to Mon but with less restaurants closed and more restaurants opened for < 8 hr",
+      "\n",
+      "A wide plateau on Sun, from 5 hr to 12 hr",
+      sep = ""
+    )
+  ) +
+  theme(plot.caption = element_text(hjust = 0))
+
+```
+
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
